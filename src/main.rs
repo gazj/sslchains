@@ -74,6 +74,6 @@ fn help()
     println!("\t{} [-hlL] [path [...]]", env::current_exe().unwrap().to_str().unwrap());
     println!("\t\t-h\tPrint this help menu.");
     println!("\t\t-l\tOutput each chain as a row of values.");
-    println!("\t\t-l\tOutput each chain as a row of values (header excluded).");
+    println!("\t\t-L\tOutput each chain as a row of values (header excluded).");
     process::exit(3);
 }
