@@ -38,7 +38,7 @@ fn main()
     }
 
     // Get command line arguments.
-    let mut args = match arguments::process(options.index)
+    let args = match arguments::process(&options)
     {
         Ok(a) => a,
         Err(e) => {
@@ -48,7 +48,7 @@ fn main()
     };
 
     // Sort expanded arguments.
-    args.sort();
+    //args.sort();
 
     // Build chains from the arguments.
     let chains = match chain::build(args)
@@ -73,7 +73,13 @@ fn help()
     println!("\nUsage");
     println!("\t{} [-hlL] [path [...]]", env::current_exe().unwrap().to_str().unwrap());
     println!("\t\t-h\tPrint this help menu.");
+    println!("\t\t-H\tProcess hidden files and directories.");
     println!("\t\t-l\tOutput each chain as a row of values.");
     println!("\t\t-L\tOutput each chain as a row of values (header excluded).");
+    println!("\t\t-r\tProcess arguments recursively.");
+    println!("\t\t-S\tFollow symbolic links.");
+    println!("\t\t-U\tProcess an unlimited number of file paths.");
+    println!("\t\t-X\tCross filesystem boundaries.");
     process::exit(3);
 }
+

@@ -4,7 +4,15 @@ A tool to identify related SSL keys, CSRs, and certificates.
 
 ## Usage
 
-#### Default Display Mode
+#### Show usage
+
+Use with the `-h` option to include hidden files and directories.
+
+#### Process hidden files / directories
+
+Use with the `-H` option to include hidden files and directories.
+
+#### Default display mode
 
 Run with any number of path arguments to define the working file set. If no arguments are provided, the current working directory (`$PWD`) is used.
 
@@ -29,7 +37,7 @@ example.com
       > samples/intermediate_ca.crt
 ```
 
-#### OneLine Display Mode
+#### Single line display mode
 
 Use with the `-l` option to display each chain on a single line (`-L` to suppress the header row).
 
@@ -42,6 +50,22 @@ _Tip: Add `|column -t` for more readable output._
 name         key                    request                certificate_chain
 example.com  samples/ca_signed.key  samples/ca_signed.csr  samples/ca_signed.crt|samples/intermediate_ca.crt
 ```
+
+#### Process arguments recursively
+
+Use with the `-r` option to process arguments recursively.
+
+#### Follow symbolic links
+
+Use with the `-S` option to follow symlinks.
+
+#### Process an unlimited number of files
+
+Use with the `-U` option to process an unlimited number of files, rather than exiting after a set default limit.
+
+#### Cross filesystem boundaries
+
+Use with the `-X` option to cross filesystem boundaries.
 
 ## Contributing
 

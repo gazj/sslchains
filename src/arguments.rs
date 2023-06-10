@@ -14,39 +14,33 @@
 //! along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::env;
-use std::fs;
 use std::io;
+use walkdir::{ DirEntry, WalkDir };
 
-pub fn process(from_index: usize) -> Result<Vec<String>, io::Error>
+use crate::options::Options;
+
+fn is_hidden(entry: &DirEntry) -> bool {
+    entry.file_name()
+         .to_str()
+         .map(|s| s.starts_with(".") && s != "." && s != "..")
+         .unwrap_or(false)
+}
+
+pub fn process(options: &Options) -> Result<Vec<String>, io::Error>
 {
     let mut args = vec![];
 
-    for arg in env::args().skip(from_index) // Skip executable name and options.
+    for arg in env::args().skip(options.index) // Skip executable name and options.
     {
         args.push(arg);
     }
 
     if args.len() == 0
     {
-        for path in fs::read_dir(".").unwrap()
-        {
-            let path = path.unwrap().path();
-
-            let md = fs::metadata(&path)?;
-
-            if md.is_file()
-            {
-                match path.to_str()
-                {
-                    Some(p) => args.push(p.to_string()),
-                    _ => ()
-
-                }
-            }
-        }
+        args.push(".".to_string());
     }
 
-    expand(args)
+    expand(args, options)
 }
 
 /**
@@ -54,37 +48,50 @@ pub fn process(from_index: usize) -> Result<Vec<String>, io::Error>
  *
  * This method is separated for testability.
  */
-fn expand(args: Vec<String>) -> Result<Vec<String>, io::Error>
+fn expand(args: Vec<String>, options: &Options) -> Result<Vec<String>, io::Error>
 {
     let mut expanded: Vec<String> = vec![];
 
+    // If the recursive option is used, expand arguments
+    // by walking the filesystem hierarchy from each argument.
     for arg in args
     {
-        let md = fs::metadata(&arg)?;
+        // println!("{}", arg.to_string());
+        for entry in WalkDir::new(arg.to_string())
 
-        if md.is_dir()
+            // Optionally follow symbolic links.
+            .follow_links(options.follow_symlinks)
+
+            // Optionally recurse up to 100 directories deep.
+            .max_depth(if options.recursive { 100 } else { 1 })
+
+            // Optionally cross filesystem boundaries.
+            .same_file_system(options.same_file_system)
+
+            // Convert to an Iterator.
+            .into_iter()
+
+            // Optionally include hidden files.
+            .filter_entry(|e| options.include_hidden_files || !is_hidden(e))
+
+            // Skip inaccessible files.
+            .filter_map(|e| e.ok())
         {
-            for path in fs::read_dir(&arg).unwrap()
+            // Add only files to the expanded items list.
+            if let Ok(md) = entry.metadata()
             {
-                let path = path.unwrap().path();
-
-                let md = fs::metadata(&path)?;
-
                 if md.is_file()
                 {
-                    match path.to_str()
-                    {
-                        Some(p) => expanded.push(p.to_string()),
-                        _ => ()
-
-                    }
+                    expanded.push(entry.path().to_str().unwrap().to_string());
                 }
             }
-        }
 
-        else if md.is_file()
-        {
-            expanded.push(arg);
+            // Do not continue if expanded file listing exceeds limit.
+            if expanded.len() > 10_000 && !options.disable_file_limit
+            {
+                eprintln!("File count (10,000 paths) exceeded. Try using path arguments which contain fewer files.");
+                std::process::exit(5);
+            }
         }
     }
 
@@ -95,6 +102,7 @@ fn expand(args: Vec<String>) -> Result<Vec<String>, io::Error>
 mod test
 {
     use super::*;
+    use crate::options::{ Options, OptionsDisplayMode };
 
     #[test]
     fn expands_arguments()
@@ -102,16 +110,101 @@ mod test
         let args = vec![
             String::from("test"),
             String::from("Cargo.toml"),
-            ];
+        ];
 
-            match expand(args)
-            {
-                Ok(x) => {
-                    assert_eq!(x,
-                        vec![
-                    String::from("test/file2"),
-                    String::from("test/file1"),
-                    String::from("Cargo.toml"),
+        let opts = Options {
+            print_help: false,
+            display_mode: OptionsDisplayMode::Default,
+            follow_symlinks: false,
+            include_hidden_files: false,
+            recursive: false,
+            same_file_system: true,
+            suppress_oneline_header: false,
+            index: 0
+        };
+
+        match expand(args, &opts)
+        {
+            Ok(x) => {
+                assert_eq!(
+                    x,
+                    vec![
+                        String::from("test/file2"),
+                        String::from("test/file1"),
+                        String::from("Cargo.toml"),
+                    ]
+                );
+            },
+            Err(x) => assert!(false, "{}", x)
+        }
+    }
+
+    #[test]
+    fn expands_arguments_recursively()
+    {
+        let args = vec![
+            String::from("test"),
+            String::from("Cargo.toml"),
+        ];
+
+        let opts = Options {
+            print_help: false,
+            display_mode: OptionsDisplayMode::Default,
+            follow_symlinks: false,
+            include_hidden_files: false,
+            recursive: true,
+            same_file_system: true,
+            suppress_oneline_header: false,
+            index: 0
+        };
+
+        match expand(args, &opts)
+        {
+            Ok(x) => {
+                assert_eq!(
+                    x,
+                    vec![
+                        String::from("test/file2"),
+                        String::from("test/dir/file3"),
+                        String::from("test/dir/file4"),
+                        String::from("test/file1"),
+                        String::from("Cargo.toml"),
+                    ]
+                );
+            },
+            Err(x) => assert!(false, "{}", x)
+        }
+    }
+
+    #[test]
+    fn expands_arguments_with_hidden()
+    {
+        let args = vec![
+            String::from("test"),
+            String::from("Cargo.toml"),
+        ];
+
+        let opts = Options {
+            print_help: false,
+            display_mode: OptionsDisplayMode::Default,
+            follow_symlinks: false,
+            include_hidden_files: true,
+            recursive: false,
+            same_file_system: true,
+            suppress_oneline_header: false,
+            index: 0
+        };
+
+        match expand(args, &opts)
+        {
+            Ok(x) => {
+                assert_eq!(
+                    x,
+                    vec![
+                        String::from("test/file2"),
+                        String::from("test/file1"),
+                        String::from("test/.hidden_file"),
+                        String::from("Cargo.toml"),
                     ]
                 );
             },
