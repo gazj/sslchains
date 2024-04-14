@@ -41,7 +41,7 @@ example.com
 
 Use with the `-l` option to display each chain on a single line (`-L` to suppress the header row).
 
-In OneLine display mode, each certificate in the chain is separated by a pipe (`|`) symbol.
+In single line display mode, each certificate in the chain is separated by a pipe (`|`) symbol.
 
 _Tip: Add `|column -t` for more readable output._
 
