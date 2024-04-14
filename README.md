@@ -6,7 +6,7 @@ A tool to identify related SSL keys, CSRs, and certificates.
 
 #### Show usage
 
-Use with the `-h` option to include hidden files and directories.
+Use with the `-h` option to show usage information.
 
 #### Process hidden files / directories
 
